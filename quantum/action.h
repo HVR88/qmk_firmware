@@ -136,6 +136,9 @@ void process_record_tap_hint(keyrecord_t *record);
 bool get_clear_oneshot_layer(uint16_t keycode, keyrecord_t *record, bool default_value);
 uint16_t get_record_keycode(keyrecord_t *record, bool update_layer_cache);
 #endif
+#ifdef BILATERAL_COMBINATIONS
+bool bilateral_combinations_left(keypos_t key);
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Helpers
