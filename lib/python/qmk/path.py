@@ -5,7 +5,7 @@ import os
 import argparse
 from pathlib import Path
 
-from qmk.constants import MAX_KEYBOARD_SUBFOLDERS, QMK_FIRMWARE
+from qmk.constants import MAX_KEYBOARD_SUBFOLDERS, QMK_FIRMWARE, QMK_USERSPACE, HAS_QMK_USERSPACE
 from qmk.errors import NoSuchKeyboardError
 
 
@@ -30,6 +30,19 @@ def under_qmk_firmware():
         return None
 
 
+def under_qmk_userspace():
+    """Returns a Path object representing the relative path under $QMK_USERSPACE, qmk root, or None.
+    """
+    cwd = Path(os.environ['ORIG_CWD'])
+
+    try:
+        if HAS_QMK_USERSPACE:
+            return cwd.relative_to(QMK_USERSPACE)
+    except ValueError:
+        pass
+    return None
+
+
 def keyboard(keyboard_name):
     """Returns the path to a keyboard's directory relative to the qmk root.
     """
@@ -47,11 +60,28 @@ def keymaps(keyboard_name):
     keyboard_folder = keyboard(keyboard_name)
     found_dirs = []
 
-    for _ in range(MAX_KEYBOARD_SUBFOLDERS):
-        if (keyboard_folder / 'keymaps').exists():
-            found_dirs.append((keyboard_folder / 'keymaps').resolve())
+    if HAS_QMK_USERSPACE:
+        this_keyboard_folder = Path(QMK_USERSPACE) / keyboard_folder
+        for _ in range(MAX_KEYBOARD_SUBFOLDERS):
+            if (this_keyboard_folder / 'keymaps').exists():
+                found_dirs.append((this_keyboard_folder / 'keymaps').resolve())
 
-        keyboard_folder = keyboard_folder.parent
+            this_keyboard_folder = this_keyboard_folder.parent
+            if this_keyboard_folder.resolve() == QMK_USERSPACE.resolve():
+                break
+
+        # We don't have any relevant keymap directories in userspace, so we'll use the fully-qualified path instead.
+        if len(found_dirs) == 0:
+            found_dirs.append((QMK_USERSPACE / keyboard_folder / 'keymaps').resolve())
+
+    this_keyboard_folder = QMK_FIRMWARE / keyboard_folder
+    for _ in range(MAX_KEYBOARD_SUBFOLDERS):
+        if (this_keyboard_folder / 'keymaps').exists():
+            found_dirs.append((this_keyboard_folder / 'keymaps').resolve())
+
+        this_keyboard_folder = this_keyboard_folder.parent
+        if this_keyboard_folder.resolve() == QMK_FIRMWARE.resolve():
+            break
 
     if len(found_dirs) > 0:
         return found_dirs
